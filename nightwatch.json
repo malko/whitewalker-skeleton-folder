@@ -5,12 +5,12 @@
 
 	"selenium" : {
 		"start_process" : true,
-		"server_path" : "/home/malko/bin/selenium-server-standalone-2.42.2.jar",
+		"server_path" : "./bin/selenium-server-standalone-2.42.2.jar",
 		"log_path" : "logs",
 		"host" : "127.0.0.1",
 		"port" : 4444,
 		"cli_args" : {
-			"webdriver.chrome.driver" : "/home/malko/bin/chromedriver",
+			"webdriver.chrome.driver" : "./bin/chromedriver",
 			"webdriver.ie.driver" : ""
 		}
 	},
