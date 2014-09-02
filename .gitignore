@@ -1,6 +1,11 @@
+<<<<<<< HEAD
 .whitewalker
 logs
 reports
 screenshots
 tmp
 *.log
+||||||| merged common ancestors
+=======
+bin
+>>>>>>> 072b0ac68249e17925c6fd438a4fe787e2a32b35
