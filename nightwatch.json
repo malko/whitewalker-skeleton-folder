@@ -1,0 +1,65 @@
+{
+	"src_folders": [],
+	"output_folder": "reports",
+	"globals_path": "",
+	"selenium": {
+		"start_process": false,
+		"server_path": "/home/jgotti/git/workspace/whitewalker-skeleton-folder/bin/selenium-server-standalone-2.44.0.jar",
+		"log_path": false,
+		"host": "127.0.0.1",
+		"port": 4444,
+		"cli_args": {
+			"webdriver.chrome.driver": "/home/jgotti/git/workspace/whitewalker-skeleton-folder/bin/chromedriver"
+		}
+	},
+	"test_settings": {
+		"default": {
+			"selenium_port": 4444,
+			"selenium_host": "127.0.0.1",
+			"silent": true,
+			"screenshots": {
+				"enabled": true,
+				"path": "screenshots"
+			}
+		},
+		"firefox": {
+			"desiredCapabilities": {
+				"browserName": "firefox",
+				"javascriptEnabled": true,
+				"acceptSslCerts": true
+			},
+			"screenshots": {
+				"enabled": true,
+				"path": "screenshots/firefox"
+			}
+		},
+		"chrome": {
+			"desiredCapabilities": {
+				"browserName": "chrome",
+				"javascriptEnabled": true,
+				"acceptSslCerts": true
+			},
+			"screenshots": {
+				"enabled": true,
+				"path": "screenshots/chrome"
+			}
+		},
+		"phantomjs": {
+			"desiredCapabilities": {
+				"browserName": "phantomjs",
+				"javascriptEnabled": true,
+				"acceptSslCerts": true
+			},
+			"screenshots": {
+				"enabled": true,
+				"path": "screenshots/phantomjs"
+			},
+			"phantomjs.binary.path": {
+				"phantomjs.binary.path": "/home/jgotti/git/workspace/whitewalker-skeleton-folder/bin/node_modules/phantomjs/lib/phantom/bin/phantomjs"
+			}
+		}
+	},
+	"whitewalker": {
+		"runnerPath": "bin/node_modules/nightwatch/bin/nightwatch"
+	}
+}

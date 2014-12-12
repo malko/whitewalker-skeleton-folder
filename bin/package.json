@@ -1,0 +1,18 @@
+{
+  "name": "whitewalker-skeleton-folder-installer",
+  "version": "0.0.1",
+  "description": "whitewalker environment installation made easy",
+  "main": "install.js",
+  "dependencies": {
+    "d.js": "^0.7.0",
+    "fs-promised": "0.0.1",
+    "progress": "^1.1.8",
+    "readline-sync": "^0.4.7",
+    "unzip": "^0.1.9"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Jonathan Gotti",
+  "license": "MIT"
+}
