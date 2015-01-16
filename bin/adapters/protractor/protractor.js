@@ -16,6 +16,7 @@ module.exports = {
 				}
 				, environments: {}
 				, adapter: data.whitewalker || {}
+				, rawConfig = data
 			}
 		;
 
