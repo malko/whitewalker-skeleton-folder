@@ -1,0 +1,4 @@
+bin/node_modules
+bin/*.jar
+bin/chromedriver
+nightwatch.json

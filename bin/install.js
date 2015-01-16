@@ -12,17 +12,17 @@ var readline = require('readline-sync')
 	, progress = require('progress')
 	, spawn = require('child_process').spawn
 	, rootdir = path.normalize(__dirname + '/..')
-	, tmpdir = os.tmpdir()
+	, adapterUtils = require('./adapters/utils.js')
 	, adapterName
-	, adapter
-	, userConfigFile
+	, adapterRunners = {
+		whitewalker: rootdir + '/bin/node_modules/.bin/whitewalker'
+		, protractor: rootdir + '/bin/node_modules/.bin/whitewalker'
+	}
 	, seleniumReleaseUrl = "http://selenium-release.storage.googleapis.com/"
 	, seleniumServerName
 	, seleniumLatestVersion
 	, seleniumLatestVersionPromise
 	, chromedriverReleaseUrl = "http://chromedriver.storage.googleapis.com/LATEST_RELEASE"
-	, chromedriverName = ( os.platform() === "linux"? "chromedriver_linux" + ( os.arch().match('64')?64:32 ) : "chromedriver_win32")
-	, chromedriverPath = path.normalize(tmpdir + '/chromedriver.zip')
 	, chromeDriverLatestVersionPromise
 	, downloads = []
 	, execs = []
@@ -79,13 +79,13 @@ function doDownloads(cb){
 	if( ! downloads.length){
 		return cb && cb();
 	}
-	var args = downloads.shift(), argcb=args[2], next = function(){argcb && argcb(); doDownloads(cb);};
+	var args = downloads.shift(), argcb = args[2], next = function(){argcb && argcb(); doDownloads(cb);};
 	args[2] = next;
 	download.apply(null, args);
 }
 
 function queueDownload(url, dest, cb) {
-	downloads.push(url, dest, cb);
+	downloads.push([url, dest, cb]);
 }
 
 
@@ -133,21 +133,6 @@ function getUrlDataPromise(url){
 	return defered.promise.rethrow();
 }
 
-// return a promise of an url
-function getUrlPromise(url){
-	var defered = D()
-	, request = http.get(url, function(response){
-		var body = '';
-		response
-		.on('data', function (chunk) { body += chunk; })
-		.on('end', function () { defered.resolve(body); })
-		.on('error', function (err){ defered.reject(err); })
-		;
-	})
-	;
-	return defered.promise.rethrow();
-}
-
 // return a promise of selenium latest version url
 function getLatestSeleniumUrlPromise(){
 	console.log("Checking selenium latest version available online");
@@ -167,23 +152,14 @@ function getLatestSeleniumUrlPromise(){
 // return a promise of chrome driver latest version url
 function getLatestChromeDriverUrlPromise(){
 	console.log("Checking chrome driver latest version available online");
-	return getUrlPromise(chromedriverReleaseUrl)
+	var chromedriverName = ( os.platform() === "linux"? "chromedriver_linux" + ( os.arch().match('64')?64:32 ) : "chromedriver_win32");
+	return getUrlDataPromise(chromedriverReleaseUrl)
 		.success(function(body){
 			return chromedriverReleaseUrl.replace(/LATEST_RELEASE$/,body) + '/' + chromedriverName + ".zip";
 		})
 	;
 }
 
-// get a list of available adapters
-function getFrameworkAdaptersListPromise(){
-	return fs.readdirPromise('./adapters')
-		.success(function(list){
-			return list.filter(function(fileOrDirName){
-				return fs.lstatSync('./adapters/' + fileOrDirName).isDirectory();
-			});
-		})
-	;
-}
 
 function driverConfig(config, name){
 	var driver = config.environments[name] || {};
@@ -204,21 +180,19 @@ seleniumLatestVersionPromise = getLatestSeleniumUrlPromise();
 chromeDriverLatestVersionPromise = getLatestChromeDriverUrlPromise();
 
 //---------------------- WHICH FRAMEWORK TO USE AND LOAD CONFIG --------------//
-configPromise = getFrameworkAdaptersListPromise()
+configPromise = D.resolved(adapterUtils.listAvailables())
 	.success(function(adaptersNames){ // ask for adapter name
 		do{
 			adapterName = ask("Which adapter do you want to use ? (available adapters: " + adaptersNames.join(', ') + ")", "nightwatch");
 		}while( !~adaptersNames.indexOf(adapterName) );
 	})
-	.success(function(){ // load adapter and adapter config
-		adapter = require('./adapters/' + adapterName + '/' + adapterName +'.js');
+	.success(function(){ // load adapter config
 
 		// check for user config
-		userConfigFile = rootdir + '/' + adapter.configFileName;
-		if ( fs.existsSync(userConfigFile)) {
-			config = adapter.configLoader(rootdir + '/' + adapter.configFileName);
+		if ( adapterUtils.hasConfig(adapterName, rootdir) ) {
+			config = adapterUtils.readConfig(adapterName, rootdir);
 		} else {
-			config = adapter.configLoader( rootdir + '/bin/adapters/' + adapterName + '/'+ adapter.configFileName);
+			config = adapterUtils.getDefaultConfig(adapterName);
 		}
 		return config;
 	})
@@ -227,7 +201,7 @@ configPromise = getFrameworkAdaptersListPromise()
 
 //---------------------- SELENIUM CONFIG --------------//
 D.all(seleniumLatestVersionPromise, configPromise, chromeDriverLatestVersionPromise)
-	.spread(function(latestSeleniumUrl, config, chromeDriverLatestVersion){
+	.spread(function(latestSeleniumUrl, userConfig, chromeDriverLatestVersion){
 
 		console.log("=== SELENIUM STANDALONE SERVER CONFIG ===");
 		var defaultSeleniumInstallPath = config.selenium.path || (rootdir + '/bin/' + seleniumServerName);
@@ -249,33 +223,53 @@ D.all(seleniumLatestVersionPromise, configPromise, chromeDriverLatestVersionProm
 		console.log("=== SELENIUM DRIVERS CONFIG ===");
 		if( confirm("Do you want to run test on Firefox ?") ) {
 			driverConfig(config, 'firefox');
+		} else {
+			config.environments.firefox = null;
 		}
 
-		if( confirm("Do you want to run test on Chrome ?") ){
+		if(! confirm("Do you want to run test on Chrome ?") ){
+			config.environments.chrome = null;
+		} else {
 			driverConfig(config, 'chrome');
-			var chromeDriverPath = path.dirname(config.selenium.path) + '/chromedriver' + (os.platform() === "linux" ? '' : '.exe');
+			var chromeDriverDownloadPath = path.dirname(config.selenium.path) + '/chromedriver.zip'
+				, chromeDriverName = 'chromedriver' + (os.platform() === "linux" ? '' : '.exe')
+				, chromeDriverDirectory
+				, chromeDriverPath
+			;
+
+			if( config.selenium.driversPath && config.selenium.driversPath['webdriver.chrome.driver']) {
+				chromeDriverPath = config.selenium.driversPath['webdriver.chrome.driver'];
+			} else {
+				chromeDriverPath = path.dirname(config.selenium.path) + '/' + chromeDriverName;
+			}
+
 			if( confirm("Do you want me to install Chrome driver for you ?") ){
-				chromeDriverPath = ask("Where do you want me to install your Chrome driver ?", chromeDriverPath);
-				queueDownload(chromeDriverLatestVersion, chromeDriverPath, function(){
-					console.log('unpacking chrome driver\n');
-					fs.createReadStream(chromeDriverPath)
-						.pipe(unzip.Extract({ path: __dirname }))
+				chromeDriverDirectory = ask("Where do you want me to install your Chrome driver ?", path.dirname(chromeDriverPath));
+				queueDownload(chromeDriverLatestVersion, chromeDriverDownloadPath, function(){
+					fs.createReadStream(chromeDriverDownloadPath)
+						.pipe(unzip.Extract({ path: chromeDriverDirectory }))
 						.on('finish', function(){
 							fs.readdir(__dirname,function(err, files){
-								files.filter(function(file){
-									file.match(/chromedriver/) && fs.chmod(__dirname + '/' + file, 365);
-								});
+								files.some(function(file){
+									if( file.match(/chromedriver/) ){
+										fs.chmod(__dirname + '/' + file, 511);
+										return true;
+									}
+								}) && fs.unlink(chromeDriverDownloadPath);
 							});
 						})
 					;
 				});
+				chromeDriverPath = chromeDriverDirectory + '/' + chromeDriverName;
 			} else if( confirm("Do you have a local Chrome driver ?") ) {
 				chromeDriverPath = ask("What's your chrome driver path ?", chromeDriverPath);
 			}
 			config.selenium.driversPath['webdriver.chrome.driver'] = chromeDriverPath;
 		}
 
-		if( confirm("Do you want to run test on Phantomjs ?") ){
+		if(! confirm("Do you want to run test on Phantomjs ?") ){
+			config.environments.phantomjs = null;
+		} else {
 			driverConfig(config, 'phantomjs');
 			config.selenium.driversPath["phantomjs.binary.path"] = path.normalize(
 				__dirname + "/node_modules/phantomjs/lib/phantom/bin/phantomjs"
@@ -285,16 +279,36 @@ D.all(seleniumLatestVersionPromise, configPromise, chromeDriverLatestVersionProm
 
 
 		console.log('=== WhiteWalker server install ===');
-		if( confirm("Do you want to install a local whitewalker server ?\n(say yes unless you already have a globally installed whitewalker")){
-			queueExecs(npmCmd,["install", "whitewalker"]);
+		if( confirm('Do you want to install a local whitewalker server ?\n(say yes unless you already have a globally installed whitewalker')){
+			queueExecs(npmCmd, ['install', 'whitewalker']);
+			queueExecs(npmCmd, ['install', adapterName]);
+			if( adapterRunners[adapterName] ){
+				config.adapter || (config.adapter = {});
+				config.adapter.runner = adapterRunners[adapterName];
+			}
 		}
-		
+		return config;
 	})
+	// display the config to the user for confirmation
+	.success(function(config){
+		console.log(JSON.stringify(adapterUtils.translateConfig(adapterName, config), null, 2));
+		if( !confirm('Are you pleased with this configuration') ){
+			throw Error('USER ABORT');
+		}
+		return config;
+	})
+	// write the config now that we have all needed informations
+	.success(function(config){
+		adapterUtils.writeConfig(adapterName, rootdir, config);
+		// then launch downloads and exec commands
+		doDownloads(doExecs);
+	})
+	.error(function(err){
+		if( err.message === 'USER ABORT' ){
+			console.log('Installation aborted on user request.');
+		} else {
+			throw err;
+		}
+	})
+	.rethrow()
 ;
-
-
-
-
-//---------------------- DRIVERS CONFIG --------------//
-
-console.log('what the fuck')
