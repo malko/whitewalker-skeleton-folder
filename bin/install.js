@@ -90,9 +90,14 @@ function queueDownload(url, dest, cb) {
 
 
 function exec(cmd, args, cb){
+	var options;
+	if(! (args instanceof Array) ){
+		options = args;
+		args = options.args || [];
+	}
 	console.log("executing command: %s %s", cmd, args.join(' '));
 	process.chdir(__dirname);
-	var cp = spawn(cmd, args);
+	var cp = spawn(cmd, args, options);
 	cp.stdout.on('data', function(data) {
 		console.log(data.toString('utf8'));
 	});
@@ -114,6 +119,7 @@ function doExecs(cb){
 	exec.apply(null, args);
 }
 function queueExecs(cmd, args, cb) {
+	args || (args = []);
 	execs.push(cb ? [cmd, args, cb] : [cmd, args]);
 }
 
