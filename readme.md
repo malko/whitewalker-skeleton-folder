@@ -12,6 +12,6 @@ This is a skeleton folder to ease new testing environment creation.
 First be sure to get git and node installed
 then for unix install
 ```
-$ git clone git@github.com:malko/whitewalker-skeleton-folder.git && cd whitewalker-skeleton-folder && rm -rf .git && ./bin/install.sh
+$ git clone git@oogit.oodrive.net:a.toinon/whitewalker-skeleton-folder.git && cd whitewalker-skeleton-folder && rm -rf .git && ./bin/install.sh
 ```
 and follow instructions
