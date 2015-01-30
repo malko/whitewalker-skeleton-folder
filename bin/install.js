@@ -286,8 +286,8 @@ D.all(seleniumLatestVersionPromise, configPromise, chromeDriverLatestVersionProm
 
 		console.log('=== WhiteWalker server install ===');
 		if( confirm('Do you want to install a local whitewalker server ?\n(say yes unless you already have a globally installed whitewalker')){
-			queueExecs(npmCmd, ['install', 'whitewalker']);
-			queueExecs(npmCmd, ['install', adapterName]);
+			queueExecs('git', ['clone', 'https://github.com/malko/whitewalker']);
+			queueExecs(npmCmd, {args: ['install'], cwd: 'whitewalker'});
 			if( adapterRunners[adapterName] ){
 				config.adapter || (config.adapter = {});
 				config.adapter.runner = adapterRunners[adapterName];
