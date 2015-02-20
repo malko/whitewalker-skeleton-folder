@@ -12,7 +12,7 @@ var readline = require('readline-sync')
 	, progress = require('progress')
 	, spawn = require('child_process').spawn
 	, rootdir = path.normalize(__dirname + '/..')
-	, adapterUtils = require('./adapters/utils.js')
+	, adapterUtils = require('whitewalker-adapters')
 	, adapterName
 	, adapterRunners = {
 		whitewalker: rootdir + '/bin/node_modules/.bin/whitewalker'

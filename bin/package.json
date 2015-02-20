@@ -4,8 +4,9 @@
   "description": "whitewalker environment installation made easy",
   "main": "install.js",
   "dependencies": {
+    "whitewalker-adapters": "^0.0.1",
     "d.js": "^0.7.0",
-    "fs-promised": "0.0.1",
+    "fs-promised": "^0.0.2",
     "progress": "^1.1.8",
     "readline-sync": "^0.4.7",
     "unzip": "^0.1.9"
